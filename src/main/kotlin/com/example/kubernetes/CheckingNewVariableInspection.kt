@@ -1,6 +1,7 @@
 package com.example.kubernetes
 
 import com.intellij.codeInspection.*
+import com.intellij.kubernetes.k8sMetaType
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
@@ -9,10 +10,12 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.elementType
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 import org.jetbrains.yaml.YAMLElementGenerator
 import org.jetbrains.yaml.YAMLFileType
 import org.jetbrains.yaml.psi.*
+import org.jetbrains.yaml.psi.impl.YAMLBlockMappingImpl
 
 
 fun String.toCamelCase(): String {
@@ -27,7 +30,6 @@ class CheckingNewVariableInspection : LocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return object : YamlPsiElementVisitor() {
             override fun visitSequenceItem(sequenceItem: YAMLSequenceItem) {
-                println("new")
                 sequenceItem.keysValues.forEach {
 //            println("value = ${it.value?.text}, key = ${it.key?.text}")
                 }
@@ -102,15 +104,10 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
             - name: 
               valueFrom:
                 configMapKeyRef:
-                    name: 
-                    key:
+                  name: 
+                  key:
             """.trimIndent()
         )
-
-
-//        tempYamlFile.documents.forEach {
-//            println("doc = ${it.text}")
-//        }
 
         val sequence = tempYamlFile.documents[0].topLevelValue as YAMLSequence
         val sequenceItem = sequence.items.first() as YAMLSequenceItem
@@ -127,17 +124,21 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val valueFromKeyValue = sequenceItem.keysValues.find { it.keyText == "valueFrom" } as YAMLKeyValue
 
         val configMapKeyRefMapping = valueFromKeyValue.value as YAMLMapping
+        configMapKeyRefMapping.keyValues.forEach {
+            println("Child =- ${it.text}")
+        }
+
+        val configMapKeyRefKeyValue = configMapKeyRefMapping.getKeyValueByKey("configMapKeyRef") as YAMLKeyValue
+        val innerConfigMapKeyRefMapping = configMapKeyRefKeyValue.value as YAMLMapping
+
         println("inner = ${configMapKeyRefMapping.text}")
 
-        configMapKeyRefMapping.children.forEach {
-            println("child = ${it.text}")
-        }
 
         val nameElement = generator.createYamlKeyValue("name", "the-map")
         val keyElement = generator.createYamlKeyValue("key", nameStringCamel)
 
-        configMapKeyRefMapping.putKeyValue(nameElement)
-        configMapKeyRefMapping.putKeyValue(keyElement)
+        innerConfigMapKeyRefMapping.putKeyValue(nameElement)
+        innerConfigMapKeyRefMapping.putKeyValue(keyElement)
 
 
         println("inner after = \n${configMapKeyRefMapping.text}")
