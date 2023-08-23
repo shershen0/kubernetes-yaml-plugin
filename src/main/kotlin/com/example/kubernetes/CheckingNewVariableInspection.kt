@@ -1,22 +1,38 @@
 package com.example.kubernetes
 
 import com.intellij.codeInspection.*
+import com.intellij.find.FindManager
+import com.intellij.find.findUsages.FindUsagesManager
+import com.intellij.kubernetes.KubernetesCompletionContributor
 import com.intellij.kubernetes.k8sMetaType
+import com.intellij.kubernetes.model.ConfigMapDataEntryType
+import com.intellij.kubernetes.model.KubernetesAnyScalarType
+import com.intellij.kubernetes.model.KustomizeK8sResourceReferenceType
+import com.intellij.kubernetes.references.KubernetesLabelValueFindUsagesHandlerFactory
+import com.intellij.kubernetes.references.KubernetesLabelValueReference
+import com.intellij.kubernetes.vfsFile
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.FileIndex
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiSearchHelper
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.elementType
+import com.intellij.util.indexing.FileBasedIndex
+import com.intellij.util.indexing.IndexId
+import org.jetbrains.kotlin.idea.search.usagesSearch.searchReferencesOrMethodReferences
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 import org.jetbrains.yaml.YAMLElementGenerator
 import org.jetbrains.yaml.YAMLFileType
 import org.jetbrains.yaml.psi.*
 import org.jetbrains.yaml.psi.impl.YAMLBlockMappingImpl
-
 
 fun String.toCamelCase(): String {
     val pattern = "_([a-zA-Z0-9])".toRegex()
@@ -27,12 +43,10 @@ fun String.toCamelCase(): String {
 
 class CheckingNewVariableInspection : LocalInspectionTool() {
 
+
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return object : YamlPsiElementVisitor() {
             override fun visitSequenceItem(sequenceItem: YAMLSequenceItem) {
-                sequenceItem.keysValues.forEach {
-//            println("value = ${it.value?.text}, key = ${it.key?.text}")
-                }
 
                 val keyValues: List<YAMLKeyValue> = sequenceItem.keysValues.toList()
                 if (keyValues.size != 2) return
@@ -46,15 +60,6 @@ class CheckingNewVariableInspection : LocalInspectionTool() {
                     println(possibleName.keyText)
                     println(possibleValue.keyText)
 
-//                    holder.registerProblem(
-//                        sequenceItem,
-//                        NewEnvVariableYamlBundle.message("inspection.yaml.new.env.variable"),
-//                        ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-//                        NewEnvironmentVariableLocalFix()
-//                    )
-
-//                    val valueElement = sequenceItem.keysValues.toList()[1]
-
                     holder.registerProblem(
                         sequenceItem,
                         NewEnvVariableYamlBundle.message("inspection.yaml.new.env.variable"),
@@ -62,7 +67,29 @@ class CheckingNewVariableInspection : LocalInspectionTool() {
                         NewEnvironmentVariableLocalFix()
                     )
 
-                }
+                } /*else {
+                    *//* consider that the yaml part is corrent and looks like this:
+                                - name: ALT_GREETING
+                                  valueFrom:
+                                    configMapKeyRef:
+                                      name: the-map
+                                      key: altGreeting
+
+                        need to same the /map/ name, in order to refactor new variable according to that map
+                     *//*
+
+
+                    val valueFromKeyValue = sequenceItem.keysValues.find { it.keyText == "valueFrom" } as YAMLKeyValue
+                    val configMapKeyRefMapping = valueFromKeyValue.value as YAMLMapping
+                    val configMapKeyRefKeyValue = configMapKeyRefMapping.getKeyValueByKey("configMapKeyRef") as YAMLKeyValue
+                    val innerConfigMapKeyRefMapping = configMapKeyRefKeyValue.value as YAMLMapping
+
+//                    innerConfigMapKeyRefMapping.keyValues.forEach {
+//                        println("other values: ${it.text}")
+//                    }
+                    mapNameValue = innerConfigMapKeyRefMapping.getKeyValueByKey("name")?.value!!
+                    println("VALUE = ${mapNameValue.text}")
+                }*/
             }
 
             override fun visitSequence(sequence: YAMLSequence) {
@@ -148,36 +175,56 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         yamlSequenceItem.replace(sequenceItem)
 
 
-        // add value to the config-map
+//        println(nameElement.text)
+//        println(nameElement.value?.text)
+//
+//        val nameValueReference = nameElement.value?.reference
+//
+//        val resolved = nameValueReference?.resolve()
+//        println(resolved?.text)
 
-        // should i make it in all modules? or only in the current one?
 
-//
-//        val projectName = project.name
-//        val vFiles = ProjectRootManager.getInstance(project)
-//            .contentSourceRoots
-//        val sourceRootsList: String = Arrays.stream(vFiles)
-//            .map { obj: VirtualFile -> obj.getUrl() }
-//            .collect(Collectors.joining("\n"))
-//
-//        println(sourceRootsList)
-//
-//
-//        val projectFileIndex = ProjectFileIndex.getInstance(project)
-//
-//        // source content module
-//
-//        val module = projectFileIndex.getModuleForFile(sequenceItem.containingFile.virtualFile)
-//
-//        if(module == null) {
-//            println("MODULE IS NULL")
-//            // cannot add new value to the config-map
-//            return
+//        val files = PsiSearchHelper.getInstance(project).findFilesWithPlainTextWords(nameElement.valueText)
+//        files.forEach {
+//            println(it.text)
 //        }
+
+//        val canFindUsages = KubernetesLabelValueFindUsagesHandlerFactory().canFindUsages(nameElement.value!! as YAMLScalar)
+//        println(canFindUsages) // false
+
+        val nameElementScalar = nameElement.value as YAMLScalar
 //
-//        println("module = $module")
-//        val yamlFiles = getYamlFiles(module)
-//        println(yamlFiles)
+        println(nameElementScalar.text)
+////        nameElementScalar.references.toList().forEach {
+////            println("references = $it")
+////        }
+//
+//        val references = nameElementScalar.searchReferencesOrMethodReferences()
+//        references.toList().forEach {
+//            println("resolve = ${it.resolve()}")
+//        }
+////
+
+
+        val listOfReferences = ReferencesSearch.search(nameElementScalar, GlobalSearchScope.allScope(project))
+        listOfReferences.mapping {
+            println("mapping")
+            val element = it.resolve()
+            println(element)
+        }
+
+
+//        ApplicationManager.getApplication().invokeLater {
+//            FindManager.getInstance(project).findUsages(nameElementScalar.originalElement)
+//        }
+
+
+//        FileBasedIndex.getInstance().getContainingFiles(getName(), indexKey, GlobalSearchScope.projectScope(project))
+//
+//        FileBasedIndex.getInstance()
+
+
+
     }
 
     private fun getYamlFiles(module: Module): List<VirtualFile> {
