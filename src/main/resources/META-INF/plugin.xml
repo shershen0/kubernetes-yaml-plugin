@@ -25,44 +25,52 @@
     <depends>org.jetbrains.plugins.yaml</depends>
     <depends>com.intellij.kubernetes</depends>
 
+<!--    <actions>-->
+<!--        <action id="EditorBasics.EditorIllustrationAction"-->
+<!--                class="com.example.kubernetes.ExtractToConfigMapVariableAction"-->
+<!--                text="Declare variable in a ConfigMap"-->
+<!--                description="make a change for text">-->
+<!--            <add-to-group group-id="EditorPopupMenu" anchor="first"/>-->
+<!--        </action>-->
+<!--    </actions>-->
 
     <extensions defaultExtensionNs="com.intellij">
         <completion.contributor
                 language="yaml"
                 implementationClass="com.example.kubernetes.SimpleCompletionContributor"/>
 
-            <!--
-              Extend the IntelliJ Platform local inspection type and connect it to the implementation class in this plugin.
-              <localInspection> type element is applied within the scope of a file under edit.
-              It is preferred over <inspectionToolProvider>
-                @see intellij.platform.resources.LangExtensionPoints
-                @see com.intellij.codeInspection.InspectionProfileEntry
+        <!--
+          Extend the IntelliJ Platform local inspection type and connect it to the implementation class in this plugin.
+          <localInspection> type element is applied within the scope of a file under edit.
+          It is preferred over <inspectionToolProvider>
+            @see intellij.platform.resources.LangExtensionPoints
+            @see com.intellij.codeInspection.InspectionProfileEntry
 
-              Attributes:
-                - language - inspection language ID
-                - shortName - not specified, will be computed by the underlying implementation classes
-                - bundle - name of the message bundle for the "key" attribute
-                - key - the key of the message to be shown in the Settings | Editor | Inspections panel
-                - groupPath - defines the outermost grouping for this inspection in
-                    the Settings | Editor | Inspections panel. Not localized.
-                - groupBundle - the name of a message bundle file to translate groupKey
-                    In this case, reuse an IntelliJ Platform bundle file from intellij.platform.resources.en
-                - groupKey - the key to use for translation subgroup name using groupBundle file.
-                    In this case, reuse the IntelliJ Platform subcategory "Probable bugs"
-                - enabledByDefault - inspection state when the Inspections panel is created.
-                - level - the default level of error found by this inspection, e.g. INFO, ERROR, etc.
-                    @see com.intellij.codeHighlighting.HighlightDisplayLevel
-                - implementationClass= the fully-qualified name of the inspection implementation class
-            -->
-            <localInspection language="yaml"
-                             bundle="messages.NewEnvVariableInspectionBundle"
-                             key="inspection.yaml.new.env.variable"
-                             groupPath="Java"
-                             groupBundle="messages.InspectionsBundle"
-                             groupKey="group.names.probable.bugs"
-                             enabledByDefault="true"
-                             level="WARNING"
-                             implementationClass="com.example.kubernetes.CheckingNewVariableInspection"/>
+          Attributes:
+            - language - inspection language ID
+            - shortName - not specified, will be computed by the underlying implementation classes
+            - bundle - name of the message bundle for the "key" attribute
+            - key - the key of the message to be shown in the Settings | Editor | Inspections panel
+            - groupPath - defines the outermost grouping for this inspection in
+                the Settings | Editor | Inspections panel. Not localized.
+            - groupBundle - the name of a message bundle file to translate groupKey
+                In this case, reuse an IntelliJ Platform bundle file from intellij.platform.resources.en
+            - groupKey - the key to use for translation subgroup name using groupBundle file.
+                In this case, reuse the IntelliJ Platform subcategory "Probable bugs"
+            - enabledByDefault - inspection state when the Inspections panel is created.
+            - level - the default level of error found by this inspection, e.g. INFO, ERROR, etc.
+                @see com.intellij.codeHighlighting.HighlightDisplayLevel
+            - implementationClass= the fully-qualified name of the inspection implementation class
+        -->
+        <localInspection language="yaml"
+                         bundle="messages.NewEnvVariableInspectionBundle"
+                         key="inspection.yaml.new.env.variable"
+                         groupPath="Java"
+                         groupBundle="messages.InspectionsBundle"
+                         groupKey="group.names.probable.bugs"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.example.kubernetes.CheckingNewVariableInspection"/>
 
     </extensions>
 
