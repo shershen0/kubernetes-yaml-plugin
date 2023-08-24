@@ -39,6 +39,10 @@
                 language="yaml"
                 implementationClass="com.example.kubernetes.SimpleCompletionContributor"/>
 
+        <notificationGroup id="Custom Notification Group"
+                           displayType="BALLOON"
+                           key="inspection.yaml.new.env.variable"/>
+
         <!--
           Extend the IntelliJ Platform local inspection type and connect it to the implementation class in this plugin.
           <localInspection> type element is applied within the scope of a file under edit.

@@ -1,17 +1,19 @@
 package com.example.kubernetes
 
-import com.intellij.codeInsight.FileModificationService
 import com.intellij.codeInspection.*
 import com.intellij.kubernetes.vfsFile
+import com.intellij.notification.NotificationDisplayType
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
-import com.intellij.openapi.editor.Document
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.findPsiFile
-import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
@@ -46,8 +48,8 @@ class CheckingNewVariableInspection : LocalInspectionTool() {
                 if (possibleName.keyText == "name" && possibleValue.keyText == "value") {
                     if (possibleName.value == null || possibleValue.value == null) return
 
-                    println(possibleName.keyText)
-                    println(possibleValue.keyText)
+//                    println(possibleName.keyText)
+//                    println(possibleValue.keyText)
 
                     holder.registerProblem(
                         sequenceItem,
@@ -55,45 +57,6 @@ class CheckingNewVariableInspection : LocalInspectionTool() {
                         ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                         NewEnvironmentVariableLocalFix()
                     )
-
-                } else {
-//                    val valueFromKeyValue = sequenceItem.keysValues.find { it.keyText == "valueFrom" } as YAMLKeyValue
-//                    val configMapKeyRefMapping = valueFromKeyValue.value as YAMLMapping
-//                    val configMapKeyRefKeyValue = configMapKeyRefMapping.getKeyValueByKey("configMapKeyRef") as YAMLKeyValue
-//                    val innerConfigMapKeyRefMapping = configMapKeyRefKeyValue.value as YAMLMapping
-//                    val nameKeyValue = innerConfigMapKeyRefMapping.getKeyValueByKey("name")
-//                    println("nameKeyValue = ${nameKeyValue?.text}")
-//                    println(nameKeyValue?.reference)
-//                    println(nameKeyValue?.value?.reference) //null
-//                    val resolved = nameKeyValue?.value?.reference?.resolve()
-//                    println("resolved = $resolved")
-//                    println("file = ${resolved?.vfsFile?.name}")
-//
-//
-//                    val parentPsi = resolved?.parent // name: the-map
-//                    val metadataPsi = parentPsi?.parent
-//                    val rootPsi = metadataPsi?.parent
-//
-//                    var parentMapping = PsiTreeUtil.getParentOfType<YAMLMapping>(
-//                        resolved,
-//                        YAMLMapping::class.java
-//                    )
-//
-//                    println("parentMapping = ${parentMapping?.text}") // name: the-map
-//
-//                    parentMapping = PsiTreeUtil.getParentOfType<YAMLMapping>(
-//                        parentMapping,
-//                        YAMLMapping::class.java
-//                    )
-//
-//                    println("parentMapping = ${parentMapping?.text}")
-//
-//                    parentMapping = PsiTreeUtil.getParentOfType<YAMLMapping>(
-//                        parentMapping,
-//                        YAMLMapping::class.java
-//                    )
-//
-//                    println("parentMapping = ${parentMapping?.text}")
 
                 }
 
@@ -151,8 +114,6 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
 
         val yamlSequenceItem: YAMLSequenceItem = descriptor.psiElement as YAMLSequenceItem
 
-        val virtualFile = yamlSequenceItem.vfsFile
-
 
         val newDeclaredName: YAMLKeyValue = yamlSequenceItem.keysValues.toList().get(0)
         val newDeclaredValue: YAMLKeyValue = yamlSequenceItem.keysValues.toList().get(1) // declaration of the value
@@ -176,9 +137,9 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val sequence = tempYamlFile.documents[0].topLevelValue as YAMLSequence
         val sequenceItem = sequence.items.first() as YAMLSequenceItem
 
-        sequenceItem.keysValues.forEach {
-            println("SKV: ${it.text}")
-        }
+//        sequenceItem.keysValues.forEach {
+//            println("SKV: ${it.text}")
+//        }
 
         val nameKeyValue = sequenceItem.keysValues.find { it.keyText == "name" } as YAMLKeyValue
         val nameValueGenerated = generator.createYamlKeyValue("name", nameString)
@@ -188,14 +149,14 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val valueFromKeyValue = sequenceItem.keysValues.find { it.keyText == "valueFrom" } as YAMLKeyValue
 
         val configMapKeyRefMapping = valueFromKeyValue.value as YAMLMapping
-        configMapKeyRefMapping.keyValues.forEach {
-            println("Child =- ${it.text}")
-        }
+//        configMapKeyRefMapping.keyValues.forEach {
+//            println("Child = ${it.text}")
+//        }
 
         val configMapKeyRefKeyValue = configMapKeyRefMapping.getKeyValueByKey("configMapKeyRef") as YAMLKeyValue
         val innerConfigMapKeyRefMapping = configMapKeyRefKeyValue.value as YAMLMapping
 
-        println("inner = ${configMapKeyRefMapping.text}")
+//        println("inner = ${configMapKeyRefMapping.text}")
 
 
         val nameElement = generator.createYamlKeyValue("name", "the-map")
@@ -204,8 +165,7 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         innerConfigMapKeyRefMapping.putKeyValue(nameElement)
         innerConfigMapKeyRefMapping.putKeyValue(keyElement)
 
-
-        println("inner after = \n${configMapKeyRefMapping.text}")
+//        println("inner after = \n${configMapKeyRefMapping.text}")
 
         println("WHOLE = ${sequenceItem.text}")
 
@@ -220,77 +180,83 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val innerConfigMapKeyRefMapping_ = configMapKeyRefKeyValue_.value as YAMLMapping
         val nameKeyValue_ = innerConfigMapKeyRefMapping_.getKeyValueByKey("name")
         println("nameKeyValue = ${nameKeyValue_?.text}")
-        println(nameKeyValue_?.reference)
-        println(nameKeyValue_?.value?.reference) //null
-        val resolved = nameKeyValue_?.value?.references?.toList()?.map { it.resolve() } ?: throw Exception()
+        println("reference = ${nameKeyValue_?.value?.reference}")
+        println("references = ${nameKeyValue_?.value?.references?.toList()}")
+
+
+        val resolved = nameKeyValue_?.value?.reference?.resolve()
         println("resolved = $resolved")
 
-        resolved.forEach {
+        resolved.let {
+            println("fileName = ${it?.vfsFile?.name}")
             println("resolvedElement = ${it?.text}")
+
+            it?.let { it1 -> addNewVariableToDataSectionInConfigMap(it1, nameStringCamel, valueString) }
         }
 
-//        val originalFile: PsiFile = virtualFile?.findPsiFile(project)?.originalFile
 
-//        virtualFile?.refresh(false, false)
-//
-//        val originalFile = virtualFile?.findPsiFile(project)?.originalFile
-//        println("originalFile = ${originalFile?.text}")
-//
-//
-//
-//        println("nameKeyValue = ${nameElement.text}")
-//        println(nameElement.reference)
-//
-//        println(nameElement.originalElement)
-//        println(nameElement.originalElement.vfsFile)
-//
-//        println("original file = ${virtualFile?.name}")
-//
-//
-//
-//        val resolved = nameElement.value?.reference?.resolve()
-//        println("resolved = $resolved")
-//        println("file = ${resolved?.vfsFile?.name}")
+    }
 
+    private fun addNewVariableToDataSectionInConfigMap(
+        mapNamePsiElement: PsiElement,
+        newVariableName: String,
+        newVariableValue: String
+    ) {
+        println("addNewVariableToDataSectionInConfigMap")
 
-//        val psiDocumentManager = PsiDocumentManager.getInstance(project)
-//        val document: Document? = psiDocumentManager.getDocument(sequenceItem.containingFile)
-//        if (document != null) {
-//            ApplicationManager.getApplication().invokeLater {
-//                FileModificationService.getInstance()
-//                    .prepareFileForWrite(sequenceItem.containingFile)
-//                psiDocumentManager.doPostponedOperationsAndUnblockDocument(document)
-//
-//                val valueFromKeyValue = sequenceItem.keysValues.find { it.keyText == "valueFrom" } as YAMLKeyValue
-//                val configMapKeyRefMapping = valueFromKeyValue.value as YAMLMapping
-//                val configMapKeyRefKeyValue = configMapKeyRefMapping.getKeyValueByKey("configMapKeyRef") as YAMLKeyValue
-//                val innerConfigMapKeyRefMapping = configMapKeyRefKeyValue.value as YAMLMapping
-//                val nameKeyValue = innerConfigMapKeyRefMapping.getKeyValueByKey("name")
-//                println("nameKeyValue = ${nameKeyValue?.text}")
-//                println(nameKeyValue?.reference)
-//                println(nameKeyValue?.value?.reference) //null
-//                val resolved = nameKeyValue?.value?.references?.toList()?.map { it.resolve() } ?: throw Exception()
-//                println("resolved = $resolved")
-//
-//                resolved.forEach {
-//                    println("resolvedElement = ${it?.text}")
-//                }
-//
-//
-//
-//            }
-//        }
-//        ReferencesSearch.search(createSearchParameters(element, scope, options)).forEach(refProcessor);
+        var parentMapping = PsiTreeUtil.getParentOfType<YAMLMapping>(
+            mapNamePsiElement,
+            YAMLMapping::class.java
+        )
 
-//
-//        val listOfReferences = ReferencesSearch.search(nameElementScalar, GlobalSearchScope.allScope(project))
-//        listOfReferences.mapping {
-//            println("mapping")
-//            val element = it.resolve()
-//            println(element)
-//        }
+        println("parentMapping = ${parentMapping?.text}") // name: the-map
+
+        parentMapping = PsiTreeUtil.getParentOfType<YAMLMapping>(
+            parentMapping,
+            YAMLMapping::class.java
+        )
+
+        println("parentMapping = ${parentMapping?.text}")
+
+        val dataEntry = parentMapping?.keyValues?.filter {
+            it.keyText.equals("data")
+        }?.single()
+
+        println("dataEntry = ${dataEntry?.text}")
+
+        val mapping = dataEntry?.value as YAMLMapping
+
+        val variableIfItExists = mapping.getKeyValueByKey(newVariableName)
+
+        val project = mapNamePsiElement.project
+
+        if (variableIfItExists?.isValid == true) {
+            println("Element already exists with such name")
 
 
+            // timed notification, will disappear ini 10s
+            MyNotifier.notifyInformationMessage(
+                project,
+                "Value already exists, cant add a new one to the config-map"
+            )
+
+
+            // should i revert the changes?
+            return
+        }
+
+
+        val generator = project.service<YAMLElementGenerator>()
+
+
+        val newVariableValue = generator.createYamlKeyValue(newVariableName, "\"$newVariableValue\"")
+
+        ApplicationManager.getApplication().invokeLater {
+
+            WriteCommandAction.runWriteCommandAction(project) {
+                mapping.putKeyValue(newVariableValue)
+            }
+        }
     }
 
     private fun getYamlFiles(module: Module): List<VirtualFile> {
