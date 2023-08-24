@@ -53,3 +53,8 @@ tasks {
         token.set(System.getenv("PUBLISH_TOKEN"))
     }
 }
+
+
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.10")
+}

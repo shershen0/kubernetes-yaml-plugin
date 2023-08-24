@@ -18,6 +18,7 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.idea.base.psi.copied
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 import org.jetbrains.yaml.YAMLElementGenerator
 import org.jetbrains.yaml.YAMLFileType
@@ -191,13 +192,13 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
             println("fileName = ${it?.vfsFile?.name}")
             println("resolvedElement = ${it?.text}")
 
-            it?.let { it1 -> addNewVariableToDataSectionInConfigMap(it1, nameStringCamel, valueString) }
+            it?.let { it1 -> addNewVariableToDataSectionInConfigMap(project, it1, nameStringCamel, valueString) }
         }
-
 
     }
 
     private fun addNewVariableToDataSectionInConfigMap(
+        project:  Project,
         mapNamePsiElement: PsiElement,
         newVariableName: String,
         newVariableValue: String
@@ -228,17 +229,20 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
 
         val variableIfItExists = mapping.getKeyValueByKey(newVariableName)
 
-        val project = mapNamePsiElement.project
 
         if (variableIfItExists?.isValid == true) {
             println("Element already exists with such name")
 
 
+
             // timed notification, will disappear ini 10s
-            MyNotifier.notifyInformationMessage(
-                project,
-                "Value already exists, cant add a new one to the config-map"
-            )
+            ApplicationManager.getApplication().invokeLater {
+                MyNotifier.notifyInformationMessage(
+                    project,
+                    "value \"$newVariableName\" already exists",
+                    "Aborting"
+                )
+            }
 
 
             // should i revert the changes?
@@ -251,12 +255,11 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
 
         val newVariableValue = generator.createYamlKeyValue(newVariableName, "\"$newVariableValue\"")
 
-        ApplicationManager.getApplication().invokeLater {
-
-            WriteCommandAction.runWriteCommandAction(project) {
+//        ApplicationManager.getApplication().invokeLater {
+//            WriteCommandAction.runWriteCommandAction(project) {
                 mapping.putKeyValue(newVariableValue)
-            }
-        }
+//            }
+//        }
     }
 
     private fun getYamlFiles(module: Module): List<VirtualFile> {
