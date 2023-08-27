@@ -1,15 +1,12 @@
 package com.example.kubernetes
 
 import com.intellij.codeInspection.*
-import com.intellij.kubernetes.vfsFile
-import com.intellij.notification.NotificationDisplayType
-import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationType
-import com.intellij.notification.Notifications
+import com.intellij.find.FindManager
+import com.intellij.find.impl.FindManagerImpl
+import com.intellij.kubernetes.getYamlPsi
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -18,7 +15,6 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
-import org.jetbrains.kotlin.idea.base.psi.copied
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 import org.jetbrains.yaml.YAMLElementGenerator
 import org.jetbrains.yaml.YAMLFileType
@@ -48,9 +44,6 @@ class CheckingNewVariableInspection : LocalInspectionTool() {
 
                 if (possibleName.keyText == "name" && possibleValue.keyText == "value") {
                     if (possibleName.value == null || possibleValue.value == null) return
-
-//                    println(possibleName.keyText)
-//                    println(possibleValue.keyText)
 
                     holder.registerProblem(
                         sequenceItem,
@@ -105,16 +98,12 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
 
     override fun getFamilyName(): String {
         return NewEnvVariableYamlBundle.message("inspection.yaml.new.env.variable.warning.message")
-//        return NewEnvVariableYamlBundle.message("inspection.yaml.new.env.variable.warning.message")
     }
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-
-
         val generator = project.service<YAMLElementGenerator>()
 
         val yamlSequenceItem: YAMLSequenceItem = descriptor.psiElement as YAMLSequenceItem
-
 
         val newDeclaredName: YAMLKeyValue = yamlSequenceItem.keysValues.toList().get(0)
         val newDeclaredValue: YAMLKeyValue = yamlSequenceItem.keysValues.toList().get(1) // declaration of the value
@@ -123,7 +112,6 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val nameStringCamel = newDeclaredName.valueText.toLowerCaseAsciiOnly().toCamelCase()
 
         val valueString = newDeclaredValue.valueText
-
 
         val tempYamlFile = generator.createDummyYamlWithText(
             """
@@ -138,10 +126,6 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val sequence = tempYamlFile.documents[0].topLevelValue as YAMLSequence
         val sequenceItem = sequence.items.first() as YAMLSequenceItem
 
-//        sequenceItem.keysValues.forEach {
-//            println("SKV: ${it.text}")
-//        }
-
         val nameKeyValue = sequenceItem.keysValues.find { it.keyText == "name" } as YAMLKeyValue
         val nameValueGenerated = generator.createYamlKeyValue("name", nameString)
         nameKeyValue.setValue(nameValueGenerated.value!!)
@@ -150,15 +134,8 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val valueFromKeyValue = sequenceItem.keysValues.find { it.keyText == "valueFrom" } as YAMLKeyValue
 
         val configMapKeyRefMapping = valueFromKeyValue.value as YAMLMapping
-//        configMapKeyRefMapping.keyValues.forEach {
-//            println("Child = ${it.text}")
-//        }
-
         val configMapKeyRefKeyValue = configMapKeyRefMapping.getKeyValueByKey("configMapKeyRef") as YAMLKeyValue
         val innerConfigMapKeyRefMapping = configMapKeyRefKeyValue.value as YAMLMapping
-
-//        println("inner = ${configMapKeyRefMapping.text}")
-
 
         val nameElement = generator.createYamlKeyValue("name", "the-map")
         val keyElement = generator.createYamlKeyValue("key", nameStringCamel)
@@ -166,11 +143,11 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         innerConfigMapKeyRefMapping.putKeyValue(nameElement)
         innerConfigMapKeyRefMapping.putKeyValue(keyElement)
 
-//        println("inner after = \n${configMapKeyRefMapping.text}")
-
         println("WHOLE = ${sequenceItem.text}")
 
         val newSequenceItem = yamlSequenceItem.replace(sequenceItem) as YAMLSequenceItem
+
+
 
 
         // БАГА ЕСТЬ НЕ ВОЗЩВРАЩАТЬ НОВЫЙ ЭЛЕМЕНТ ИБО НЕТ ВИРТУАЛ ФАЙЛА ХОТЯ ОН ОБЯЗАН БЫТЬ КАЖЕТСЯ В ЛЮБОБОМ СЛУЧАЕ
@@ -184,21 +161,175 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         println("reference = ${nameKeyValue_?.value?.reference}")
         println("references = ${nameKeyValue_?.value?.references?.toList()}")
 
+        println("REFERENCE RESOLVED = ${nameKeyValue_?.value?.reference?.resolve()?.parent?.parent?.parent?.text}")
 
-        val resolved = nameKeyValue_?.value?.reference?.resolve()
-        println("resolved = $resolved")
 
-        resolved.let {
-            println("fileName = ${it?.vfsFile?.name}")
-            println("resolvedElement = ${it?.text}")
+//        println("first")
 
-            it?.let { it1 -> addNewVariableToDataSectionInConfigMap(project, it1, nameStringCamel, valueString) }
+//        SearchService.getInstance()
+//            .searchWord(project, "name")
+//            .buildLeafOccurrenceQuery()
+//            .findAll()
+//            .forEach {
+//                println("it = ${it.element.text}")
+//            }
+//        println("second")
+//        SearchService.getInstance().searchWord(project, nameKeyValue_!!.valueText)
+//            .inFilesWithLanguage(YAMLLanguage.INSTANCE)
+//            .inScope(GlobalSearchScope.allScope(project))
+//            .inContexts(SearchContext.IN_CODE)
+//            .buildOccurrenceQuery()
+//            .findAll()
+//            .forEach {
+//                println("it = ${it.element.text}")
+//            }
+
+        val yamlFiles = getYamlFiles(project)
+        yamlFiles.forEach {
+            println(it.canonicalPath)
         }
+
+        yamlFiles.forEach { yamlFile ->
+            PsiTreeUtil.collectElementsOfType(yamlFile.getYamlPsi(project), YAMLDocument::class.java)
+                .filter { yamlDocument ->
+
+                    yamlDocument as YAMLDocument
+
+                    val topMapping = yamlDocument.topLevelValue as YAMLMapping
+                    val kindValue = topMapping.getKeyValueByKey("kind")
+
+                    val metadataMapping = topMapping.getKeyValueByKey("metadata")?.value as YAMLMapping
+                    val nameValue = metadataMapping.getKeyValueByKey("name")
+
+                    kindValue?.valueText.equals("ConfigMap") &&
+                            nameValue?.valueText.equals("the-map")
+                }.forEach { yamlDocument ->
+                    yamlDocument as YAMLDocument
+
+                    val topMapping = yamlDocument.topLevelValue as YAMLMapping
+
+                    val dataMapping = topMapping.getKeyValueByKey("data")?.value as YAMLMapping
+
+                    val newKeyValue = generator.createYamlKeyValue(nameStringCamel, valueString)
+
+                    dataMapping.putKeyValue(newKeyValue)
+                }
+
+//            PsiManager.getInstance(project).findFile(it)!!.children.toList().forEach{
+//                println("child = ${it.text}")
+//
+//
+//                it as YAMLDocument
+//
+//                val topLevel = it.topLevelValue
+//
+//                topLevel as YAMLMapping
+//
+//                val kindKeyValue = topLevel.getKeyValueByKey("kind")
+//                println(kindKeyValue?.valueText)
+//
+//            }
+        }
+
+//        println("PSI REFERENCE SEARCH")
+
+//        val references = PsiReferenceService.getService()
+//            .getReferences(nameKeyValue_?.value?.originalElement!!, PsiReferenceService.Hints.NO_HINTS)
+//        println(references)
+//
+//        val f: PsiReference.() -> Unit = {
+//            this.resolve()
+//            val element = this.element
+//            println("element = ${element.text}")
+//            val p = element.parent
+//            println("p = ${p?.text}")
+//            val pp = p.parent
+//            println("pp = ${pp?.text}")
+//            val ppp = pp.parent
+//            println("ppp = ${ppp?.text}")
+//        }
+//
+//        references.forEach {
+//            it.f()
+//        }
+//
+
+//        println("REFERENCE SEARCH")
+////        nameKeyValue_ ---- name: the-map
+//        val result: Collection<PsiReference> = ReferencesSearch.search(
+//            nameKeyValue_.value as PsiElement,
+//            GlobalSearchScope.allScope(project)
+//        ).findAll()
+//
+//
+//        val labelvaliereference = LabelValueReference(nameKeyValue_.value as YAMLScalar).multiResolve(true)
+//        println("labelvaliereference = $labelvaliereference")
+//        labelvaliereference.toList().forEach {
+//            println(it.element?.text)
+//        }
+//
+//        println("PSH")
+//        val psh = PsiSearchHelper.getInstance(project)
+//        val l = psh.findFilesWithPlainTextWords("the-map").toList()
+//        l.forEach {
+//            println("phs element = ${it.text}")
+//        }
+//
+//
+//        println("FIND USAGES HANDLER")
+//        val findUsagesHandler = project.findUsagesManager.getFindUsagesHandler(nameKeyValue_.value!!, false)
+//
+//        val actualUsages = mutableListOf<PsiElement>()
+//        findUsagesHandler!!.processElementUsages(findUsagesHandler.psiElement, Processor { actualUsages.add(it.element!!) },
+//            FindUsagesOptions(ProjectScope.getProjectScope(project))
+//        )
+//        actualUsages.forEach {
+//            println("found usage = ${it.text}")
+//        }
+//
+//
+//        println("ResolveResult")
+//
+//        val resolveResults: Array<ResolveResult> = (nameKeyValue_.value).multiResolve(false)
+//        val resolvedElements = ContainerUtil.map(
+//            resolveResults
+//        ) { r: ResolveResult -> r.element }
+//
+//        resolvedElements.forEach {
+//            println("resolved element = ${it.text}")
+//        }
+
+//        queue.forEach {
+//            it.f()
+//        }
+
+
+//        val resolved = nameKeyValue_?.value?.reference?.resolve()
+//        println("resolved = $resolved")
+//
+//        resolved.let {
+//            println("fileName = ${it?.vfsFile?.name}")
+//            println("resolvedElement = ${it?.text}")
+//
+//            it?.let { it1 -> addNewVariableToDataSectionInConfigMap(project, it1, nameStringCamel, valueString) }
+//        }
+//
+//
+//        val q = ReferencesSearch.search(nameKeyValue_?.value?.navigationElement!!, GlobalSearchScope.allScope(project))
+//        println(q)
+//
+//        q.forEach {
+//            println("queue element = ${it.resolve()?.text}")
+//        }
+
 
     }
 
+    val Project.findUsagesManager get() = (this.service<FindManager>() as FindManagerImpl).findUsagesManager
+
+
     private fun addNewVariableToDataSectionInConfigMap(
-        project:  Project,
+        project: Project,
         mapNamePsiElement: PsiElement,
         newVariableName: String,
         newVariableValue: String
@@ -234,7 +365,6 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
             println("Element already exists with such name")
 
 
-
             // timed notification, will disappear ini 10s
             ApplicationManager.getApplication().invokeLater {
                 MyNotifier.notifyInformationMessage(
@@ -256,16 +386,16 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val newVariableValue = generator.createYamlKeyValue(newVariableName, "\"$newVariableValue\"")
 
 //        ApplicationManager.getApplication().invokeLater {
-//            WriteCommandAction.runWriteCommandAction(project) {
-                mapping.putKeyValue(newVariableValue)
-//            }
+        WriteCommandAction.runWriteCommandAction(project) {
+            mapping.putKeyValue(newVariableValue)
+        }
 //        }
     }
 
-    private fun getYamlFiles(module: Module): List<VirtualFile> {
+    private fun getYamlFiles(project: Project): List<VirtualFile> {
         lateinit var files: Collection<VirtualFile>
-        DumbService.getInstance(module.project).runReadActionInSmartMode {
-            files = FileTypeIndex.getFiles(YAMLFileType.YML, GlobalSearchScope.moduleScope(module))
+        DumbService.getInstance(project).runReadActionInSmartMode {
+            files = FileTypeIndex.getFiles(YAMLFileType.YML, GlobalSearchScope.allScope(project))
         }
         return files.toList()
     }
