@@ -44,7 +44,6 @@ private fun <E : YAMLDocument> List<E>.filterConfigMaps(): MutableCollection<E> 
 
 class CheckingNewVariableInspection : LocalInspectionTool() {
 
-
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return object : YamlPsiElementVisitor() {
 
@@ -111,7 +110,6 @@ private class NewEnvironmentVariableLocalFix : LocalQuickFix {
         val valueString = newDeclaredValue.valueText
 
         val newKeyValue = generator.createYamlKeyValue(nameStringCamel, "\"$valueString\"")
-
 
         // checking configMaps, if everything is fine -- adding new variable
 
