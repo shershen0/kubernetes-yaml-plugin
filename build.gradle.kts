@@ -57,4 +57,9 @@ tasks {
 
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.10")
+    testImplementation("junit:junit:4.13.1")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
