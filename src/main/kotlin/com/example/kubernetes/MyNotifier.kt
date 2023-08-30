@@ -2,7 +2,6 @@ package com.example.kubernetes
 
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
-import com.intellij.notification.Notifications
 import com.intellij.openapi.project.Project
 
 
@@ -13,7 +12,5 @@ object MyNotifier {
             .createNotification(content, NotificationType.INFORMATION)
             .setSubtitle(subtitle)
             .notify(project)
-
-
     }
 }

@@ -20,6 +20,7 @@ intellij {
 
     plugins.set(
         listOf(
+            "Docker",
             "com.intellij.kubernetes:232.8660.153",
             "com.intellij.java",
             "org.jetbrains.kotlin",
